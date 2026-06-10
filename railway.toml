@@ -1,2 +1,12 @@
+# Railway config for GHCR image-based deploy.
+# Source of truth for env vars remains tenant railway.toml in agentyx-vertical-assets
+# until tenant configs are updated to reference this repo.
+
 [build]
 builder = "DOCKERFILE"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10

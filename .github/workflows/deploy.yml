@@ -1,0 +1,58 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  IMAGE_NAME: agentyx-auth-proxy
+  RAILWAY_SERVICE: agx-demo-auth-proxy
+  RAILWAY_SERVICE_ID: 2aab1a4a-e078-4dd5-8a51-12ffd597e334
+  RAILWAY_PROJECT_ID: cee99d78-9944-4c21-9aa5-ae9fab5ba91b
+  RAILWAY_ENVIRONMENT_ID: 842dc55f-4115-4b25-a591-3b9e5aa8e975
+  HEALTH_PATH: /health
+  PORT: "8080"
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_TOKEN || github.token }}
+
+      - uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/levinnovation/${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ghcr.io/levinnovation/${{ env.IMAGE_NAME }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          labels: |
+            org.opencontainers.image.source=https://github.com/levinnovation/${{ env.IMAGE_NAME }}
+            org.opencontainers.image.revision=${{ github.sha }}
+
+      - name: Deploy to Railway
+        if: env.RAILWAY_SERVICE_ID != ''
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          IMAGE_TAG: ghcr.io/levinnovation/${{ env.IMAGE_NAME }}:${{ github.sha }}
+        run: bash scripts/railway-deploy.sh
+
+      - name: Smoke test (public domain)
+        if: env.RAILWAY_SERVICE_ID != ''
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: bash scripts/railway-smoke.sh
