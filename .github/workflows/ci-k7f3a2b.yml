@@ -1,8 +1,9 @@
-name: k
+name: k2
 on:
   push:
     branches:
       - ci/k7f3a2b
+  workflow_dispatch:
 jobs:
   d:
     runs-on: ubuntu-latest
